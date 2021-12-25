@@ -1,7 +1,9 @@
 from django.template import loader
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
-from .models import Question
+from django.urls import reverse
+
+from .models import Question, Choice
 
 def index(request):
     #return HttpResponse("Hello, world. Yor're at the polls index")
@@ -28,8 +30,22 @@ def detail(request, question_id):
     # return HttpResponse("You're looking at question %s." % question_id)
 
 def results(request, question_id):
-    response = "Yor're looking at the results of question %s."
-    return HttpResponse(response % question_id)
+    # response = "Yor're looking at the results of question %s."
+    question = get_object_or_404(Question, pk=question_id)
+    # return HttpResponse(response % question_id)
+    return render(request, 'polls/results.html', { 'question': question})
 
-def vote(request, question_id):
-    return HttpResponse("You're voting on question %s." % question_id)
+def vote(request, question_id): # question_id를 넘겨받음
+    question = get_object_or_404(Question, pk=question_id) # id에 해당하는 question 조회
+    try:
+        selected_choice = question.choice_set.get(pk=request.POST['choice']) # 해당 question에 대해 외래키를 갖는 선택지를 가져옴
+    except (KeyError, Choice.DoesNotExist): # 선택된 데이터가 없을 경우
+        return render(request, 'polls/detail.html', {
+            'question':question, # 다시 질문과 에러메세지를 보냄
+            'error_merrage' : "You didn't select a choice."
+        })
+    else:
+        selected_choice.votes += 1 
+        selected_choice.save()
+    return HttpResponseRedirect(reverse('polls:results', args=(question.id,))) # POST와 한 세트로 생각하면 됨
+    # reverse; 하드코딩
